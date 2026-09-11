@@ -3,40 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NASA 소행성 정보 조회</title>
+    <title>NASA 오늘의 천문/소행성 사진 (APOD)</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 800px;
-            margin: 30px auto;
-            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px 20px;
             background-color: #0b3d91;
             color: #ffffff;
+            line-height: 1.6;
         }
         .container {
             background-color: #105b70;
-            padding: 25px;
+            padding: 30px;
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
         }
         h1 {
             text-align: center;
-            margin-bottom: 20px;
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+        .subtitle {
+            text-align: center;
+            color: #dddddd;
+            margin-bottom: 25px;
+            font-size: 0.95rem;
         }
         .search-box {
             display: flex;
             gap: 10px;
             justify-content: center;
-            margin-bottom: 25px;
+            margin-bottom: 30px;
         }
         input[type="date"] {
-            padding: 10px;
+            padding: 12px 15px;
             border-radius: 6px;
             border: none;
             font-size: 16px;
+            outline: none;
         }
         button {
-            padding: 10px 20px;
+            padding: 12px 24px;
             border: none;
             border-radius: 6px;
             background-color: #fc3d21;
@@ -44,109 +57,177 @@
             font-size: 16px;
             cursor: pointer;
             font-weight: bold;
+            transition: background-color 0.2s ease;
         }
         button:hover {
             background-color: #e0321a;
-        }
-        .asteroid-card {
-            background-color: #ffffff;
-            color: #333333;
-            padding: 15px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            border-left: 6px solid #105b70;
-        }
-        .hazard {
-            border-left-color: #fc3d21;
-        }
-        .hazard-text {
-            color: #fc3d21;
-            font-weight: bold;
         }
         #loading {
             text-align: center;
             display: none;
             font-size: 18px;
+            padding: 20px;
+        }
+        .media-card {
+            background-color: #ffffff;
+            color: #222222;
+            padding: 25px;
+            border-radius: 10px;
+            display: none;
+        }
+        .media-title {
+            margin-top: 0;
+            font-size: 1.5rem;
+            color: #0b3d91;
+            border-bottom: 2px solid #105b70;
+            padding-bottom: 10px;
+        }
+        .media-date {
+            font-size: 0.85rem;
+            color: #666666;
+            margin-bottom: 15px;
+        }
+        .media-container {
+            width: 100%;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .media-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .media-container iframe {
+            width: 100%;
+            height: 450px;
+            border: none;
+            border-radius: 8px;
+        }
+        .explanation {
+            text-align: justify;
+            font-size: 1rem;
+            color: #333333;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #105b70;
+        }
+        .copyright-text {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: #777;
+            font-style: italic;
+        }
+        .hd-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: #0b3d91;
+            font-weight: bold;
+            text-decoration: none;
+        }
+        .hd-link:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>근지구 소행성(NeoWs) 조회</h1>
+    <h1>NASA 오늘의 천문/소행성 사진</h1>
+    <p class="subtitle">날짜를 선택하여 우주 및 소행성 사진과 설명을 확인하세요.</p>
+
     <div class="search-box">
         <input type="date" id="searchDate">
-        <button onclick="fetchAsteroids()">조회하기</button>
+        <button onclick="fetchApod()">조회하기</button>
     </div>
 
-    <div id="loading">데이터를 불러오는 중입니다...</div>
-    <div id="results"></div>
+    <div id="loading">NASA 우주 이미지를 불러오는 중입니다...</div>
+
+    <div id="mediaCard" class="media-card">
+        <h2 id="mediaTitle" class="media-title"></h2>
+        <div id="mediaDate" class="media-date"></div>
+        <div id="mediaViewer" class="media-container"></div>
+        <div id="copyright" class="copyright-text"></div>
+        <h3>사진 설명</h3>
+        <p id="explanation" class="explanation"></p>
+        <a id="hdUrl" class="hd-link" target="_blank" rel="noopener noreferrer">고해상도 이미지 보기 ↗</a>
+    </div>
 </div>
 
 <script>
-    // 오늘 날짜를 기본값으로 설정
+    // 오늘 날짜 기본 설정
     document.getElementById('searchDate').value = new Date().toISOString().substring(0, 10);
 
-    async function fetchAsteroids() {
+    // 페이지 로드 시 오늘 사진 자동 호출
+    window.onload = function() {
+        fetchApod();
+    };
+
+    async function fetchApod() {
         const apiKey = 'zM9hJKluf45TdgYqEl7HeOHHgnfHLxi2TEvlv9ZA';
         const dateInput = document.getElementById('searchDate').value;
-        const resultsDiv = document.getElementById('results');
         const loadingDiv = document.getElementById('loading');
+        const mediaCard = document.getElementById('mediaCard');
 
         if (!dateInput) {
             alert('날짜를 선택해 주세요.');
             return;
         }
 
-        resultsDiv.innerHTML = '';
+        mediaCard.style.display = 'none';
         loadingDiv.style.display = 'block';
 
-        const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${dateInput}&end_date=${dateInput}&api_key=${apiKey}`;
+        const url = `https://api.nasa.gov/planetary/apod?date=${dateInput}&api_key=${apiKey}`;
 
         try {
             const response = await fetch(url);
             if (!response.ok) {
-                throw new Error('API 요청에 실패했습니다.');
+                throw new Error('데이터를 불러오는데 실패했습니다.');
             }
-            
+
             const data = await response.json();
-            const asteroids = data.near_earth_objects[dateInput];
+
+            // 데이터 출력 처리
+            document.getElementById('mediaTitle').innerText = data.title;
+            document.getElementById('mediaDate').innerText = `촬영/공개 일자: ${data.date}`;
+            document.getElementById('explanation').innerText = data.explanation;
+
+            // 저작권 정보 표기
+            const copyrightDiv = document.getElementById('copyright');
+            if (data.copyright) {
+                copyrightDiv.innerText = `ⓒ Credit: ${data.copyright.trim()}`;
+                copyrightDiv.style.display = 'block';
+            } else {
+                copyrightDiv.style.display = 'none';
+            }
+
+            // 미디어 타입 처리 (이미지 vs 영상)
+            const mediaViewer = document.getElementById('mediaViewer');
+            const hdUrlAnchor = document.getElementById('hdUrl');
+
+            if (data.media_type === 'image') {
+                mediaViewer.innerHTML = `<img src="${data.url}" alt="${data.title}">`;
+                if (data.hdurl) {
+                    hdUrlAnchor.href = data.hdurl;
+                    hdUrlAnchor.style.display = 'inline-block';
+                } else {
+                    hdUrlAnchor.style.display = 'none';
+                }
+            } else if (data.media_type === 'video') {
+                mediaViewer.innerHTML = `<iframe src="${data.url}" allowfullscreen></iframe>`;
+                hdUrlAnchor.style.display = 'none';
+            } else {
+                mediaViewer.innerHTML = '<p>지원하지 않는 미디어 형식입니다.</p>';
+                hdUrlAnchor.style.display = 'none';
+            }
 
             loadingDiv.style.display = 'none';
-
-            if (!asteroids || asteroids.length === 0) {
-                resultsDiv.innerHTML = '<p style="text-align:center;">해당 날짜에 접근하는 소행성 데이터가 없습니다.</p>';
-                return;
-            }
-
-            resultsDiv.innerHTML = `<p>총 <strong>${asteroids.length}</strong>개의 소행성이 감지되었습니다.</p>`;
-
-            asteroids.forEach(asteroid => {
-                const isHazardous = asteroid.is_potentially_hazardous_asteroid;
-                const minDiameter = asteroid.estimated_diameter.meters.estimated_diameter_min.toFixed(1);
-                const maxDiameter = asteroid.estimated_diameter.meters.estimated_diameter_max.toFixed(1);
-                const velocity = parseFloat(asteroid.close_approach_data[0].relative_velocity.kilometers_per_hour).toFixed(1);
-                const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.kilometers).toFixed(1);
-
-                const card = document.createElement('div');
-                card.className = `asteroid-card ${isHazardous ? 'hazard' : ''}`;
-                card.innerHTML = `
-                    <h3>${asteroid.name}</h3>
-                    <p><strong>추정 크기:</strong> ${minDiameter}m ~ ${maxDiameter}m</p>
-                    <p><strong>상대 속도:</strong> 시속 ${Number(velocity).toLocaleString()} km/h</p>
-                    <p><strong>지구 접근 거리:</strong> ${Number(missDistance).toLocaleString()} km</p>
-                    <p><strong>잠재적 위험 여부:</strong> 
-                        <span class="${isHazardous ? 'hazard-text' : ''}">
-                            ${isHazardous ? '위험함 (Hazardous)' : '안전함 (Safe)'}
-                        </span>
-                    </p>
-                `;
-                resultsDiv.appendChild(card);
-            });
+            mediaCard.style.display = 'block';
 
         } catch (error) {
             loadingDiv.style.display = 'none';
-            resultsDiv.innerHTML = `<p style="color: #fc3d21; text-align:center;">오류가 발생했습니다: ${error.message}</p>`;
+            alert(`오류 발생: ${error.message}`);
         }
     }
 </script>
