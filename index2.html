@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NASA 소행성 정보 조회</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: #0b3d91;
+            color: #ffffff;
+        }
+        .container {
+            background-color: #105b70;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+        input[type="date"] {
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            background-color: #fc3d21;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #e0321a;
+        }
+        .asteroid-card {
+            background-color: #ffffff;
+            color: #333333;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            border-left: 6px solid #105b70;
+        }
+        .hazard {
+            border-left-color: #fc3d21;
+        }
+        .hazard-text {
+            color: #fc3d21;
+            font-weight: bold;
+        }
+        #loading {
+            text-align: center;
+            display: none;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>근지구 소행성(NeoWs) 조회</h1>
+    <div class="search-box">
+        <input type="date" id="searchDate">
+        <button onclick="fetchAsteroids()">조회하기</button>
+    </div>
+
+    <div id="loading">데이터를 불러오는 중입니다...</div>
+    <div id="results"></div>
+</div>
+
+<script>
+    // 오늘 날짜를 기본값으로 설정
+    document.getElementById('searchDate').value = new Date().toISOString().substring(0, 10);
+
+    async function fetchAsteroids() {
+        const apiKey = 'zM9hJKluf45TdgYqEl7HeOHHgnfHLxi2TEvlv9ZA';
+        const dateInput = document.getElementById('searchDate').value;
+        const resultsDiv = document.getElementById('results');
+        const loadingDiv = document.getElementById('loading');
+
+        if (!dateInput) {
+            alert('날짜를 선택해 주세요.');
+            return;
+        }
+
+        resultsDiv.innerHTML = '';
+        loadingDiv.style.display = 'block';
+
+        const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${dateInput}&end_date=${dateInput}&api_key=${apiKey}`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error('API 요청에 실패했습니다.');
+            }
+            
+            const data = await response.json();
+            const asteroids = data.near_earth_objects[dateInput];
+
+            loadingDiv.style.display = 'none';
+
+            if (!asteroids || asteroids.length === 0) {
+                resultsDiv.innerHTML = '<p style="text-align:center;">해당 날짜에 접근하는 소행성 데이터가 없습니다.</p>';
+                return;
+            }
+
+            resultsDiv.innerHTML = `<p>총 <strong>${asteroids.length}</strong>개의 소행성이 감지되었습니다.</p>`;
+
+            asteroids.forEach(asteroid => {
+                const isHazardous = asteroid.is_potentially_hazardous_asteroid;
+                const minDiameter = asteroid.estimated_diameter.meters.estimated_diameter_min.toFixed(1);
+                const maxDiameter = asteroid.estimated_diameter.meters.estimated_diameter_max.toFixed(1);
+                const velocity = parseFloat(asteroid.close_approach_data[0].relative_velocity.kilometers_per_hour).toFixed(1);
+                const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.kilometers).toFixed(1);
+
+                const card = document.createElement('div');
+                card.className = `asteroid-card ${isHazardous ? 'hazard' : ''}`;
+                card.innerHTML = `
+                    <h3>${asteroid.name}</h3>
+                    <p><strong>추정 크기:</strong> ${minDiameter}m ~ ${maxDiameter}m</p>
+                    <p><strong>상대 속도:</strong> 시속 ${Number(velocity).toLocaleString()} km/h</p>
+                    <p><strong>지구 접근 거리:</strong> ${Number(missDistance).toLocaleString()} km</p>
+                    <p><strong>잠재적 위험 여부:</strong> 
+                        <span class="${isHazardous ? 'hazard-text' : ''}">
+                            ${isHazardous ? '위험함 (Hazardous)' : '안전함 (Safe)'}
+                        </span>
+                    </p>
+                `;
+                resultsDiv.appendChild(card);
+            });
+
+        } catch (error) {
+            loadingDiv.style.display = 'none';
+            resultsDiv.innerHTML = `<p style="color: #fc3d21; text-align:center;">오류가 발생했습니다: ${error.message}</p>`;
+        }
+    }
+</script>
+
+</body>
+</html>
